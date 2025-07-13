@@ -37,7 +37,9 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
 Core/Src/oled.c
-Core/Src/font.c)
+Core/Src/font.c
+        Core/Inc/AD9833.h
+        Core/Src/AD9833.c)
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 

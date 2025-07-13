@@ -37,6 +37,7 @@
 #include "arm_const_structs.h"
 #include <stdlib.h>
 #include <stdbool.h>
+#include "AD9833.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,9 +48,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define Pi 3.1415926
-#define SAMPLE 277
+#define SAMPLE1 277
 #define FFT_LENGTH 1024
-
+#define SAMPLE2 2770
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,8 +61,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint16_t DualSine12bit[SAMPLE]__attribute__((section(".out")));
-uint16_t high[SAMPLE]__attribute__((section(".adc")));
+uint16_t DualSine12bit1[SAMPLE1]__attribute__((section(".out")));
+uint16_t DualSine12bit2[SAMPLE2]__attribute__((section(".out")));
+uint16_t high[SAMPLE1]__attribute__((section(".adc")));
 uint16_t adc_data[FFT_LENGTH*2]__attribute__((section(".adc")));
 uint16_t out_data[FFT_LENGTH*2]__attribute__((section(".out")));
 uint16_t fft_data1[FFT_LENGTH]__attribute__((section(".out")));
@@ -138,7 +140,7 @@ char *Float1String(float value){
 void SineWave_Data( int num,uint16_t *D,float U) {
     int i;
     for (i = 0; i < num; i++) {
-        D[i] = (uint16_t ) ((U * sin((1.0 * i / (num - 1)) * 2 * PI) + U + 1.1) * 4095 / 3.3);
+        D[i] = (uint16_t ) ((U * sin((1.0 * i / (num - 1)) * 2 * PI) + U + 1.3) * 4095 / 3.3);
     }
 }
 void High_Data( int num,uint16_t *D) {
@@ -231,13 +233,13 @@ int Judge(){
     int s1=0,s2=0,s3=0;
 
     Switch(0);
+    HAL_DAC_Stop_DMA(&hdac1,DAC_CHANNEL_1);
+    HAL_DAC_Start_DMA(&hdac1,DAC_CHANNEL_1,(uint32_t *)DualSine12bit2,SAMPLE2,DAC_ALIGN_12B_R);//改为5kHz
     HAL_Delay(30);
     for(int i=0;i<20;i++){
         HAL_ADC_Start(&hadc2);
         HAL_ADC_PollForConversion(&hadc2,20);
         avg+=HAL_ADC_GetValue(&hadc2)/65535.*3.3;
-
-
     }
     avg/=20.;
 
@@ -309,6 +311,7 @@ float calculation(int Z_type, float calc_dif_phase){
     float origin_value;float value_t;
     switch(Z_type){
         case 0:
+
             return (float)(Kc/tan(dif_phase_radian));
 
         case 1:
@@ -319,16 +322,16 @@ float calculation(int Z_type, float calc_dif_phase){
         case 2:
                 Switch(0);
                 HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-                HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) high, SAMPLE, DAC_ALIGN_12B_R);
+                HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) high, SAMPLE1, DAC_ALIGN_12B_R);
 
                 for (int i = 0; i < 20; i++) {
                     HAL_ADC_Start(&hadc1);
                     HAL_ADC_PollForConversion(&hadc1,20);
                     avg1+=HAL_ADC_GetValue(&hadc1)/65535.*3.3;
                     HAL_ADC_Stop(&hadc1);
-                    HAL_ADC_Start(&hadc2);
-                    HAL_ADC_PollForConversion(&hadc2,20);
-                    avg2+=HAL_ADC_GetValue(&hadc2)/65535.*3.3;
+                    HAL_ADC_Start(&hadc1);
+                    HAL_ADC_PollForConversion(&hadc1,20);
+                    avg2+=HAL_ADC_GetValue(&hadc1)/65535.*3.3;
                     HAL_ADC_Stop(&hadc2);
                 }
                 avg1 /= 20.;
@@ -336,7 +339,7 @@ float calculation(int Z_type, float calc_dif_phase){
                 value_t = avg1 * 8.9 / avg2;
                 if (value_t < 100) {
                     HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-                    HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) DualSine12bit, SAMPLE, DAC_ALIGN_12B_R);
+                    HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) DualSine12bit1, SAMPLE1, DAC_ALIGN_12B_R);
                     return value_t;
                 }//挡位1
 
@@ -356,7 +359,7 @@ float calculation(int Z_type, float calc_dif_phase){
                 value_t = avg1 * 997 / avg2;
                 if (value_t < 10000) {
                     HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-                    HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) DualSine12bit, SAMPLE, DAC_ALIGN_12B_R);
+                    HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) DualSine12bit1, SAMPLE1, DAC_ALIGN_12B_R);
                     return value_t;
                 }//挡位2
 
@@ -376,7 +379,7 @@ float calculation(int Z_type, float calc_dif_phase){
                 value_t = avg1 * 1997 / avg2;
                 HAL_ADC_Start_DMA(&hadc1,(uint32_t *)adc_data, FFT_LENGTH*2);
                 HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-                HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) DualSine12bit, SAMPLE, DAC_ALIGN_12B_R);
+                HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *) DualSine12bit1, SAMPLE1, DAC_ALIGN_12B_R);
                 return value_t;
                 //挡位3
             }
@@ -465,6 +468,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+//q
     kalman_filter_init(&freq_filter, 0.005, 0.4);
     kalman_filter_init(&vpp_filter, 0.01, 0.4);
     kalman_filter_init(&dphase_filter, 0.02, 2.0);
@@ -475,18 +479,15 @@ int main(void)
     arm_cfft_radix4_instance_f32 scfft;
     arm_cfft_radix4_init_f32(&scfft,FFT_LENGTH,0,1);
     HAL_TIM_Base_Start(&htim1);
-    SineWave_Data(SAMPLE,DualSine12bit,0.7);
-    High_Data(SAMPLE, high);
+    SineWave_Data(SAMPLE1,DualSine12bit1,0.7);
+    High_Data(SAMPLE1, high);
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
-    HAL_DAC_Start_DMA(&hdac1,DAC_CHANNEL_1,(uint32_t *)high,SAMPLE,DAC_ALIGN_12B_R);
+    HAL_DAC_Start_DMA(&hdac1,DAC_CHANNEL_1,(uint32_t *)high,SAMPLE1,DAC_ALIGN_12B_R);
     type=Judge();
     HAL_DAC_Stop_DMA(&hdac1,DAC_CHANNEL_1);
-    HAL_DAC_Start_DMA(&hdac1,DAC_CHANNEL_1,(uint32_t *)DualSine12bit,SAMPLE,DAC_ALIGN_12B_R);
+    HAL_DAC_Start_DMA(&hdac1,DAC_CHANNEL_1,(uint32_t *)DualSine12bit1,SAMPLE1,DAC_ALIGN_12B_R);
     HAL_ADC_Start_DMA(&hadc1,(uint32_t *)adc_data, FFT_LENGTH*2);
-
-
-  /* USER CODE END 2 */
     switch(type){
         case 0:
             Switch(1);
@@ -495,6 +496,9 @@ int main(void)
         case 2:
             Switch(0);
     }
+
+  /* USER CODE END 2 */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -511,17 +515,19 @@ int main(void)
 
             fft_complete_flag = 0;
 
-            char msg[400] = {0};
+
 
             float avg_1 = 0, avg_2 = 0;
             for (int i = 0; i < FFT_LENGTH; i++) {
                 avg_1 += fft_data1[i];
                 avg_2 += fft_data2[i];
             }//????????????A1,A0??
-            avg_1 /= 1023.0;
-            avg_2 /= 1023.0;
-//
-//
+//            avg_1 /= 1023.0;
+//            avg_2 /= 1023.0;
+            avg_1 = 0;
+            avg_2 = 0;
+
+//            char msg[40000] = {0};
 //            for (int i = 0; i < FFT_LENGTH; i++) {
 //                sprintf(msg, "%s%s", msg, Float1String(fft_data1[i] - avg_1));
 //                sprintf(msg, "%s,%s\r\n ", msg, Float1String(fft_data2[i] - avg_2));

@@ -188,16 +188,16 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
-            .adc :
-            {
-              . = ALIGN(4);
-              . = ALIGN(4);
-            } >RAM_D2
-            .out :
-              {
-                . = ALIGN(4);
-                . = ALIGN(4);
-              } >RAM
+                  .adc :
+                  {
+                    . = ALIGN(4);
+                    . = ALIGN(4);
+                  } >RAM_D2
+                  .out :
+                    {
+                      . = ALIGN(4);
+                      . = ALIGN(4);
+                    } >RAM
 }
 
 
